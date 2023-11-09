@@ -14,3 +14,4 @@ class Expense:
         self.destination_id = destination_id
         self.description = description
         self.amount = amount
+

@@ -3,75 +3,120 @@
 The Wanderlust Travel Planner API is a Flask-based backend application that empowers users to plan their trips, manage destinations, create itineraries, track expenses, and fetch weather information for a specified location. This README provides an overview of the API and its features.
 
 ## Table of Contents
-- [Features](#features)
-- [API Routes](#api-routes)
-  - [Welcome Route](#welcome-route)
+
+- [Installation](#installation)
+- [Database Setup](#database-setup)
+- [Models](#models)
+- [Routes](#routes)
+  - [Destination Management](#destination-management)
+  - [Itinerary Planning](#itinerary-planning)
+  - [Expense Tracking](#expense-tracking)
   - [Weather Route](#weather-route)
-  - [Destination Routes](#destination-routes)
-  - [Itinerary Routes](#itinerary-routes)
-  - [Expense Routes](#expense-routes)
-- [Getting Started](#getting-started)
 - [Usage](#usage)
+- [Contributing](#contributing)
 
-## Features
-The Travel Planner API includes the following key features:
-1. **Database Integration**: Utilizes a PostgreSQL database for storing destinations, itineraries, and expenses.
-2. **Destination Management**: API endpoints for creating, retrieving, updating, and deleting destinations.
-3. **Itinerary Planning**: API endpoints for creating and managing travel itineraries.
-4. **Expense Tracking**: Allows users to record and categorize expenses related to their trips.
-5. **Weather Data**: Fetches real-time weather information for a specified location using the OpenWeatherMap API.
+## Installation
 
-## API Routes
+1. Clone the repository to your local machine:
 
-### Welcome Route
-- **Route**: `/`
-- **Method**: GET
-- **Description**: A welcome route to check if the API is running.
+   ```bash
+   git clone https://github.com/yourusername/travel-planner-app.git
+   ```
+
+2. Change to the project directory:
+
+   ```bash
+   cd travel-planner-app
+   ```
+
+3. Create a virtual environment (recommended) and activate it:
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+4. Install the required Python packages:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Database Setup
+
+The application uses a PostgreSQL database to store destination, itinerary, and expense data. To set up the database, make sure you have PostgreSQL installed and follow these steps:
+
+1. Create a new PostgreSQL database.
+
+2. Set the database URL as an environment variable. You can add it to a `.env` file:
+
+   ```
+   DATABASE_URL=postgresql://username:password@localhost/dbname
+   ```
+
+   Replace `username`, `password`, `localhost`, and `dbname` with your database credentials.
+
+3. Run the following command to create the required tables:
+
+   ```bash
+   python setup_database.py
+   ```
+
+## Models
+
+The application defines the following data models:
+
+- Destination
+  - Fields: id, name, description, location
+
+- Itinerary
+  - Fields: id, destination_id, activity
+
+- Expense
+  - Fields: id, destination_id, description, amount
+
+## Routes
+
+### Destination Management
+
+- **Create a Destination**: `POST /destinations`
+- **Get All Destinations**: `GET /destinations`
+- **Get a Destination by ID**: `GET /destinations/<int:destination_id>`
+- **Update a Destination by ID**: `PUT /destinations/<int:destination_id>`
+- **Delete a Destination by ID**: `DELETE /destinations/<int:destination_id>`
+
+### Itinerary Planning
+
+- **Create an Itinerary**: `POST /itineraries`
+- **Get All Itineraries**: `GET /itineraries`
+- **Update an Itinerary by ID**: `PUT /itineraries/<int:itinerary_id>`
+- **Delete an Itinerary by ID**: `DELETE /itineraries/<int:itinerary_id>`
+
+### Expense Tracking
+
+- **Create an Expense**: `POST /expenses`
+- **Get All Expenses**: `GET /expenses`
+- **Update an Expense by ID**: `PUT /expenses/<int:expense_id>`
+- **Delete an Expense by ID**: `DELETE /expenses/<int:expense_id>`
 
 ### Weather Route
-- **Route**: `/weather`
-- **Method**: GET
-- **Description**: Fetches real-time weather information for a specified location.
-- **Query Parameters**:
-  - `location` (string, required): The name of the location for weather data retrieval.
-- **Response**:
-  - If successful, it returns JSON data with temperature, condition, humidity, and wind speed.
-  - In case of an error, it provides an error message and an appropriate HTTP status code.
 
-### Destination Routes
-- **Route**: `/destinations`
-- **Methods**: POST, GET
-- **Description**: Allows users to create new destinations and retrieve a list of destinations.
+- **Get Weather Data**: `GET /weather?location=CityName`
 
-- **Route**: `/destinations/<int:destination_id>`
-- **Methods**: GET, PUT, DELETE
-- **Description**: Retrieves, updates, or deletes a specific destination by its ID.
-
-### Itinerary Routes
-- **Route**: `/itineraries`
-- **Methods**: POST, GET
-- **Description**: Enables users to create itineraries and retrieve a list of itineraries.
-
-- **Route**: `/itineraries/<int:itinerary_id>`
-- **Methods**: PUT, DELETE
-- **Description**: Updates or deletes a specific itinerary by its ID.
-
-### Expense Routes
-- **Route**: `/expenses`
-- **Methods**: POST, GET
-- **Description**: Allows users to create expenses and retrieve a list of expenses.
-
-- **Route**: `/expenses/<int:expense_id>`
-- **Methods**: PUT, DELETE
-- **Description**: Updates or deletes a specific expense by its ID.
-
-## Getting Started
-1. Clone the repository.
-2. Set up a PostgreSQL database and provide the connection details in your `.env` file.
-3. Install the required packages using `pip install -r requirements.txt`.
-4. Run the Flask application using `python app.py`.
+   Returns weather information for the specified location.
 
 ## Usage
-1. Access the API routes using tools like `curl` or create a client application to interact with the API.
-2. Use the `/weather` route to fetch real-time weather data for a location by passing the `location` query parameter.
-3. Create destinations, itineraries, and expenses using their respective routes.
+
+1. Start the Flask application:
+
+   ```bash
+   python app.py
+   ```
+
+2. Access the API using a tool like `curl` or a web browser.
+
+3. Use the provided routes to manage destinations, itineraries, expenses, and check weather conditions.
+
+## Contributing
+
+Contributions are welcome! Please submit issues or pull requests for any improvements or bug fixes.

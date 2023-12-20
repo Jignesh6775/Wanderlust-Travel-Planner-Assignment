@@ -14,33 +14,38 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 conn = psycopg2.connect(DATABASE_URL)
 
 # Create tables
-with conn.cursor() as cursor:
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS destinations (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            description TEXT,
-            location VARCHAR(100)
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS itineraries (
-            id SERIAL PRIMARY KEY,
-            destination_id INTEGER,
-            activity TEXT,
-            FOREIGN KEY (destination_id) REFERENCES destinations (id)
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS expenses (
-            id SERIAL PRIMARY KEY,
-            destination_id INTEGER,
-            description TEXT,
-            amount DECIMAL,
-            FOREIGN KEY (destination_id) REFERENCES destinations (id)
-        )
-    ''')
-    conn.commit()
+def create_tables():
+    with conn.cursor() as cursor:
+        tables = [
+            '''
+            CREATE TABLE IF NOT EXISTS destinations (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                description TEXT,
+                location VARCHAR(100)
+            )
+            ''',
+            '''
+            CREATE TABLE IF NOT EXISTS itineraries (
+                id SERIAL PRIMARY KEY,
+                destination_id INTEGER,
+                activity TEXT,
+                FOREIGN KEY (destination_id) REFERENCES destinations (id)
+            )
+            ''',
+            '''
+            CREATE TABLE IF NOT EXISTS expenses (
+                id SERIAL PRIMARY KEY,
+                destination_id INTEGER,
+                description TEXT,
+                amount DECIMAL,
+                FOREIGN KEY (destination_id) REFERENCES destinations (id)
+            )
+            '''
+        ]
+        for table in tables:
+            cursor.execute(table)
+        conn.commit()
 
 
 # Routes
@@ -48,181 +53,142 @@ with conn.cursor() as cursor:
 def welcome():
     return jsonify(message='Welcome to the Wanderlust Travel Planner API!')
 
-
 # Define the route to get weather data
 @app.route('/weather', methods=['GET'])
 def get_weather():
-    location = request.args.get('location')  # Get the location from the request
+    location = request.args.get('location')
+    api_key = 'YOUR_OPENWEATHERMAP_API_KEY'
+    weather_data = fetch_weather_data(location, api_key)
+    return jsonify(weather_data)
 
-    # Replace 'YOUR_OPENWEATHERMAP_API_KEY' with your actual API key
-    api_key = '6344579f1e37b63a939fad09a0ef06b6'
-
-    # Define the OpenWeatherMap API URL with the location and API key
+def fetch_weather_data(location, api_key):
     weather_url = f'https://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}&units=metric'
-
     try:
-        # Make the API request to get weather data
         response = requests.get(weather_url)
         data = response.json()
-
-        # Check if the request was successful
         if response.status_code == 200:
-            # Extract relevant weather information from the response
-            weather_data = {
+            return {
                 'location': location,
                 'temperature': data['main']['temp'],
                 'condition': data['weather'][0]['description'],
                 'humidity': data['main']['humidity'],
                 'wind_speed': data['wind']['speed']
-            }
-
-            return jsonify(weather_data), 200
+            }, 200
         else:
-            return jsonify({'error': 'Weather data not found'}), 404
-
+            return {'error': 'Weather data not found'}, 404
     except Exception as e:
-        return jsonify({'error': 'An error occurred while fetching weather data'}), 500
-
+        return {'error': 'An error occurred while fetching weather data'}, 500
 
 # Destination Routes 
 @app.route('/destinations', methods=['POST'])
 def create_destination():
     data = request.get_json()
-    name = data['name']
-    description = data['description']
-    location = data['location']
-
+    name, description, location = data['name'], data['description'], data['location']
     with conn.cursor() as cursor:
         cursor.execute("INSERT INTO destinations (name, description, location) VALUES (%s, %s, %s)", (name, description, location))
         conn.commit()
-
     return jsonify(message='Destination created successfully'), 201
 
 @app.route('/destinations', methods=['GET'])
 def get_destinations():
-    with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM destinations")
-        destinations = cursor.fetchall()
-
+    destinations = fetch_records('destinations')
     return jsonify(destinations), 200
 
 @app.route('/destinations/<int:destination_id>', methods=['GET'])
 def get_destination(destination_id):
-    with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM destinations WHERE id = %s", (destination_id,))
-        destination = cursor.fetchone()
-
-    if destination is not None:
-        return jsonify(destination), 200
-    else:
-        return jsonify(message='Destination not found'), 404
+    destination = fetch_record_by_id('destinations', destination_id)
+    return jsonify(destination), 200 if destination else 404
 
 @app.route('/destinations/<int:destination_id>', methods=['PUT'])
 def update_destination(destination_id):
     data = request.get_json()
-    name = data['name']
-    description = data['description']
-    location = data['location']
-
-    with conn.cursor() as cursor:
-        cursor.execute("UPDATE destinations SET name = %s, description = %s, location = %s WHERE id = %s",
-                       (name, description, location, destination_id))
-        conn.commit()
-
+    update_record('destinations', destination_id, data)
     return jsonify(message='Destination updated successfully'), 200
 
 @app.route('/destinations/<int:destination_id>', methods=['DELETE'])
 def delete_destination(destination_id):
-    with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM destinations WHERE id = %s", (destination_id,))
-        conn.commit()
-
+    delete_record('destinations', destination_id)
     return jsonify(message='Destination deleted successfully'), 200
-
 
 # Itinerary Routes
 @app.route('/itineraries', methods=['POST'])
 def create_itinerary():
     data = request.get_json()
-    destination_id = data['destination_id']
-    activity = data['activity']
-
-    with conn.cursor() as cursor:
-        cursor.execute("INSERT INTO itineraries (destination_id, activity) VALUES (%s, %s)", (destination_id, activity))
-        conn.commit()
-
+    insert_record('itineraries', data)
     return jsonify(message='Activity added to itinerary'), 201
 
 @app.route('/itineraries', methods=['GET'])
 def get_itineraries():
-    with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM itineraries")
-        itineraries = cursor.fetchall()
-
+    itineraries = fetch_records('itineraries')
     return jsonify(itineraries), 200
 
 @app.route('/itineraries/<int:itinerary_id>', methods=['PUT'])
 def update_itinerary(itinerary_id):
     data = request.get_json()
-    activity = data['activity']
-
-    with conn.cursor() as cursor:
-        cursor.execute("UPDATE itineraries SET activity = %s WHERE id = %s", (activity, itinerary_id))
-        conn.commit()
-
+    update_record('itineraries', itinerary_id, data)
     return jsonify(message='Activity updated in itinerary'), 200
 
 @app.route('/itineraries/<int:itinerary_id>', methods=['DELETE'])
 def delete_itinerary(itinerary_id):
-    with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM itineraries WHERE id = %s", (itinerary_id,))
-        conn.commit()
-
+    delete_record('itineraries', itinerary_id)
     return jsonify(message='Activity removed from itinerary'), 200
-
 
 # Expense Routes
 @app.route('/expenses', methods=['POST'])
 def create_expense():
     data = request.get_json()
-    destination_id = data['destination_id']
-    description = data['description']
-    amount = data['amount']
-
-    with conn.cursor() as cursor:
-        cursor.execute("INSERT INTO expenses (destination_id, description, amount) VALUES (%s, %s, %s)", (destination_id, description, amount))
-        conn.commit()
-
+    insert_record('expenses', data)
     return jsonify(message='Expense added successfully'), 201
 
 @app.route('/expenses/<int:expense_id>', methods=['PUT'])
 def update_expense(expense_id):
     data = request.get_json()
-    description = data['description']
-    amount = data['amount']
-
-    with conn.cursor() as cursor:
-        cursor.execute("UPDATE expenses SET description = %s, amount = %s WHERE id = %s", (description, amount, expense_id))
-        conn.commit()
-
+    update_record('expenses', expense_id, data)
     return jsonify(message='Expense updated successfully'), 200
 
 @app.route('/expenses/<int:expense_id>', methods=['DELETE'])
 def delete_expense(expense_id):
-    with conn.cursor() as cursor:
-        cursor.execute("DELETE FROM expenses WHERE id = %s", (expense_id,))
-        conn.commit()
-
+    delete_record('expenses', expense_id)
     return jsonify(message='Expense deleted successfully'), 200
 
 @app.route('/expenses', methods=['GET'])
 def get_expenses():
-    with conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM expenses")
-        expenses = cursor.fetchall()
-
+    expenses = fetch_records('expenses')
     return jsonify(expenses), 200
 
 
+
+# Database operations
+def fetch_records(table):
+    with conn.cursor() as cursor:
+        cursor.execute(f"SELECT * FROM {table}")
+        return cursor.fetchall()
+
+def fetch_record_by_id(table, record_id):
+    with conn.cursor() as cursor:
+        cursor.execute(f"SELECT * FROM {table} WHERE id = %s", (record_id,))
+        return cursor.fetchone()
+
+def insert_record(table, data):
+    with conn.cursor() as cursor:
+        columns = ', '.join(data.keys())
+        values = ', '.join(['%s'] * len(data))
+        query = f"INSERT INTO {table} ({columns}) VALUES ({values})"
+        cursor.execute(query, tuple(data.values()))
+        conn.commit()
+
+def update_record(table, record_id, data):
+    with conn.cursor() as cursor:
+        set_clause = ', '.join([f"{key} = %s" for key in data.keys()])
+        query = f"UPDATE {table} SET {set_clause} WHERE id = %s"
+        cursor.execute(query, tuple(data.values()) + (record_id,))
+        conn.commit()
+
+def delete_record(table, record_id):
+    with conn.cursor() as cursor:
+        cursor.execute(f"DELETE FROM {table} WHERE id = %s", (record_id,))
+        conn.commit()
+
 if __name__ == '__main__':
+    create_tables()
     app.run(debug=True)
